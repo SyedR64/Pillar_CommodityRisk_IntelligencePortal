@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pillar — Prospect Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="../data/prospects.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:#0a1220;color:#e2e8f0;display:flex}
+
+#sidebar{width:340px;flex-shrink:0;background:#050a13;border-right:1px solid #162033;
+  display:flex;flex-direction:column;overflow:hidden}
+.sb-header{padding:14px 16px;border-bottom:1px solid #162033;background:#0a1220}
+.sb-title{font-size:12px;font-weight:700;color:#fff;letter-spacing:0.3px}
+.sb-sub{font-size:10px;color:#64748b;margin-top:3px;line-height:1.4}
+
+.filters{padding:12px 16px;border-bottom:1px solid #162033}
+.filter-label{font-size:9.5px;font-weight:700;letter-spacing:1px;color:#3d5070;
+  text-transform:uppercase;margin-bottom:6px}
+.chip-row{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px}
+.chip{padding:4px 9px;border-radius:12px;font-size:10.5px;font-weight:600;
+  cursor:pointer;border:1px solid #1e2d40;background:rgba(255,255,255,0.03);
+  color:#94a3b8;transition:all 0.12s;user-select:none}
+.chip:hover{color:#e2e8f0;background:rgba(255,255,255,0.06)}
+.chip.on{background:rgba(42,127,255,0.18);border-color:#2a7fff;color:#e2e8f0}
+
+.search-row{padding:10px 16px;border-bottom:1px solid #162033}
+#search{width:100%;padding:8px 10px;background:#0a1220;border:1px solid #1e2d40;
+  border-radius:5px;color:#e2e8f0;font-size:12px;font-family:inherit}
+#search:focus{outline:none;border-color:#2a7fff}
+
+.meta-strip{padding:8px 16px;background:rgba(42,127,255,0.04);
+  border-bottom:1px solid #162033;font-size:10.5px;color:#94a3b8}
+.meta-strip b{color:#5ba0ff;font-weight:700}
+
+#list{flex:1;overflow-y:auto;padding:6px 10px 20px}
+#list::-webkit-scrollbar{width:6px}
+#list::-webkit-scrollbar-thumb{background:#1e2d40;border-radius:3px}
+
+.card{background:#0a1220;border:1px solid #162033;border-radius:6px;
+  margin-top:6px;padding:10px 12px;cursor:pointer;transition:all 0.12s}
+.card:hover{border-color:#2a7fff;background:rgba(42,127,255,0.04)}
+.card-name{font-size:12px;font-weight:700;color:#e2e8f0;line-height:1.3}
+.card-meta{font-size:10px;color:#64748b;margin-top:4px;display:flex;gap:8px;flex-wrap:wrap}
+.card-meta span{display:inline-flex;align-items:center;gap:3px}
+.score-pill{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:800;
+  letter-spacing:0.3px;margin-left:auto}
+.score-100{background:rgba(239,68,68,0.18);color:#f87171}
+.score-95{background:rgba(249,115,22,0.18);color:#fb923c}
+.score-90{background:rgba(232,160,32,0.18);color:#fbbf24}
+.score-85{background:rgba(16,185,129,0.18);color:#34d399}
+.score-80{background:rgba(42,127,255,0.18);color:#5ba0ff}
+.score-lo{background:rgba(100,116,139,0.18);color:#94a3b8}
+
+#map{flex:1;min-width:0;background:#050a13}
+.leaflet-container{background:#050a13}
+.leaflet-popup-content-wrapper{background:#0a1220;color:#e2e8f0;border:1px solid #1e2d40;
+  border-radius:6px;box-shadow:0 4px 20px rgba(0,0,0,0.5)}
+.leaflet-popup-tip{background:#0a1220}
+.leaflet-popup-content{font-family:'Inter',sans-serif;margin:12px 14px;font-size:11.5px;line-height:1.5;min-width:230px}
+.pop-title{font-size:13px;font-weight:800;color:#fff;margin-bottom:6px;line-height:1.3}
+.pop-row{display:flex;justify-content:space-between;gap:8px;margin-top:3px}
+.pop-k{color:#64748b;font-weight:500}
+.pop-v{color:#e2e8f0;font-weight:600}
+.pop-rev{margin-top:8px;padding-top:8px;border-top:1px solid #162033;
+  font-size:12px;font-weight:700;color:#34d399}
+
+.mark{border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,0.3);
+  display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff}
+.marker-cluster div{background:rgba(42,127,255,0.85)!important;color:#fff!important;font-weight:700!important}
+.marker-cluster{background:rgba(42,127,255,0.35)!important}
+
+.footnote{padding:10px 16px;font-size:9.5px;color:#3d5070;border-top:1px solid #162033;line-height:1.5}
+
+@media(max-width:768px){
+  body{flex-direction:column;overflow:auto}html,body{height:auto}
+  #sidebar{width:100%;max-height:45vh}
+  #map{height:55vh;min-height:400px}
+}
+</style>
+</head>
+<body>
+<div id="sidebar">
+  <div class="sb-header">
+    <div class="sb-title">Commodity importer universe</div>
+    <div class="sb-sub">Pillar ICP: physical commodity buyers with hedging exposure. Marker size ∝ est. annual revenue opportunity (50&nbsp;bps × notional).</div>
+  </div>
+  <div class="filters">
+    <div class="filter-label">Commodity</div>
+    <div class="chip-row" id="commodity-filters"></div>
+    <div class="filter-label">Score</div>
+    <div class="chip-row" id="score-filters"></div>
+  </div>
+  <div class="search-row">
+    <input id="search" type="search" placeholder="Search company, city, state…" autocomplete="off">
+  </div>
+  <div class="meta-strip" id="meta"></div>
+  <div id="list"></div>
+  <div class="footnote">
+    Data: US Import manifests (Apr&nbsp;2026). Rev opp illustrative: weight (MT) × commodity spot × 50&nbsp;bps.
+    Scoring per Pillar GTM Playbook v4.
+  </div>
+</div>
+<div id="map"></div>
+
+<script>
+let DATA = null;
+let map, cluster;
+let activeCommodity = new Set();
+let activeScore = new Set();
+let currentMarkers = new Map();
+
+const SCORE_BANDS = [
+  {v:100,label:'100',cls:'score-100'},
+  {v:95, label:'95', cls:'score-95'},
+  {v:90, label:'90', cls:'score-90'},
+  {v:85, label:'85', cls:'score-85'},
+  {v:80, label:'80', cls:'score-80'},
+  {v:75, label:'75',cls:'score-lo'},
+  {v:70, label:'70',cls:'score-lo'},
+  {v:0,  label:'Unscored',cls:'score-lo'},
+];
+
+const COMMODITY_COLORS = {
+  'Aluminum':'#5ba0ff','Aluminum sheet':'#3b82f6','Copper':'#f97316',
+  'Lead':'#a855f7','Lead acid battery':'#9333ea','Lithium':'#10b981',
+  'Titanium':'#e8a020','Tin':'#fbbf24','Zinc':'#14b8a6',
+  'Magnesium':'#22d3ee','Molybdenum':'#ec4899','Steel coil':'#64748b',
+  'Steel scrap':'#94a3b8','Scrap':'#64748b','Scrap metal':'#64748b',
+  'HMS':'#475569','Iron':'#78716c',
+};
+function colorFor(c){return COMMODITY_COLORS[c] || '#94a3b8'}
+
+function escapeHtml(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+
+function fmtUSD(n){
+  if(!n)return'$0';
+  if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';
+  if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K';
+  return'$'+Math.round(n);
+}
+function fmtNum(n){return (n||0).toLocaleString()}
+function scoreCls(s){
+  if(s>=100)return'score-100';if(s>=95)return'score-95';if(s>=90)return'score-90';
+  if(s>=85)return'score-85';if(s>=80)return'score-80';return'score-lo';
+}
+
+function init() {
+  map = L.map('map', {zoomControl:true, preferCanvas:true}).setView([39.5, -96], 4);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution:'© OpenStreetMap · © CARTO', subdomains:'abcd', maxZoom:19
+  }).addTo(map);
+  cluster = L.markerClusterGroup({
+    showCoverageOnHover:false, maxClusterRadius:45, spiderfyOnMaxZoom:true,
+    chunkedLoading:true,
+  });
+  map.addLayer(cluster);
+
+  const loader = window.PILLAR_DATA
+    ? Promise.resolve(window.PILLAR_DATA)
+    : fetch('../data/prospects.json').then(r => r.json());
+  loader.then(payload => { DATA = payload; buildFilters(); render(); });
+}
+
+function buildFilters(){
+  const counts = {};
+  DATA.prospects.forEach(p => { if(p.commodity) counts[p.commodity] = (counts[p.commodity]||0) + 1; });
+  const commEl = document.getElementById('commodity-filters');
+  Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([c,n])=>{
+    const el = document.createElement('div');
+    el.className = 'chip';
+    el.innerHTML = `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${colorFor(c)};margin-right:5px;vertical-align:middle"></span>${escapeHtml(c)} <span style="color:#3d5070">${n}</span>`;
+    el.onclick = () => { el.classList.toggle('on'); if(activeCommodity.has(c))activeCommodity.delete(c);else activeCommodity.add(c); render(); };
+    commEl.appendChild(el);
+  });
+  const scoreEl = document.getElementById('score-filters');
+  const scoreCounts = {};
+  DATA.prospects.forEach(p => { scoreCounts[p.score] = (scoreCounts[p.score]||0) + 1; });
+  [100,95,90,85,80,75,70,0].forEach(v => {
+    if(!scoreCounts[v]) return;
+    const el = document.createElement('div');
+    el.className = 'chip';
+    const label = v===0 ? 'Unscored' : v;
+    el.innerHTML = `${label} <span style="color:#3d5070">${scoreCounts[v]}</span>`;
+    el.onclick = () => { el.classList.toggle('on'); if(activeScore.has(v))activeScore.delete(v);else activeScore.add(v); render(); };
+    scoreEl.appendChild(el);
+  });
+}
+
+function filtered() {
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  return DATA.prospects.filter(p => {
+    if(activeCommodity.size && !activeCommodity.has(p.commodity)) return false;
+    if(activeScore.size && !activeScore.has(p.score)) return false;
+    if(q) {
+      const hay = (p.name + ' ' + (p.city||'') + ' ' + (p.state||'') + ' ' + (p.country||'') + ' ' + p.commodity).toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function render() {
+  const items = filtered();
+  cluster.clearLayers();
+  currentMarkers.clear();
+
+  const withGeo = items.filter(p => p.lat !== null && p.lat !== undefined);
+  const maxRev = Math.max(1, ...withGeo.map(p => p.revOppUSD));
+
+  withGeo.forEach(p => {
+    const size = 8 + Math.sqrt(p.revOppUSD / maxRev) * 24;
+    const color = colorFor(p.commodity);
+    const icon = L.divIcon({
+      className:'',
+      html:`<div class="mark" style="width:${size}px;height:${size}px;background:${color}"></div>`,
+      iconSize:[size,size], iconAnchor:[size/2, size/2]
+    });
+    const m = L.marker([p.lat, p.lon], {icon});
+    m.bindPopup(popupHtml(p));
+    currentMarkers.set(p.name, m);
+    cluster.addLayer(m);
+  });
+
+  // List (top 150 by rev opp)
+  const list = document.getElementById('list');
+  list.innerHTML = '';
+  items.sort((a,b)=>b.revOppUSD - a.revOppUSD).slice(0,150).forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    const score = p.score || 0;
+    card.innerHTML = `
+      <div style="display:flex;align-items:flex-start;gap:8px">
+        <div style="flex:1;min-width:0">
+          <div class="card-name">${escapeHtml(p.name)}</div>
+          <div class="card-meta">
+            <span style="color:${colorFor(p.commodity)}">● ${escapeHtml(p.commodity||'—')}</span>
+            <span>${escapeHtml(p.city||p.state||p.country||'—')}</span>
+            <span>${fmtNum(p.shipments)} ship</span>
+            <span style="color:#34d399">${fmtUSD(p.revOppUSD)}</span>
+          </div>
+        </div>
+        <span class="score-pill ${scoreCls(score)}">${score||'—'}</span>
+      </div>`;
+    card.onclick = () => {
+      const m = currentMarkers.get(p.name);
+      if(m && p.lat != null) { map.setView([p.lat, p.lon], 8); m.openPopup(); }
+    };
+    list.appendChild(card);
+  });
+
+  // Meta
+  const totalRev = items.reduce((s,p)=>s+p.revOppUSD,0);
+  const totalShip = items.reduce((s,p)=>s+p.shipments,0);
+  document.getElementById('meta').innerHTML =
+    `<b>${items.length}</b> prospects · <b>${fmtNum(totalShip)}</b> shipments · <b>${fmtUSD(totalRev)}</b> rev opp · ${withGeo.length} on map`;
+}
+
+function popupHtml(p) {
+  const also = p.alsoImports && p.alsoImports.length ? `<div class="pop-row"><span class="pop-k">Also</span><span class="pop-v">${escapeHtml(p.alsoImports.slice(0,3).join(', '))}</span></div>` : '';
+  const email = p.email ? `<div class="pop-row"><span class="pop-k">Email</span><span class="pop-v" style="font-size:10px">${escapeHtml(p.email)}</span></div>` : '';
+  const phone = p.phone ? `<div class="pop-row"><span class="pop-k">Phone</span><span class="pop-v" style="font-size:10px">${escapeHtml(p.phone)}</span></div>` : '';
+  return `<div>
+    <div class="pop-title">${escapeHtml(p.name)}</div>
+    <div class="pop-row"><span class="pop-k">Score</span><span class="pop-v"><span class="score-pill ${scoreCls(p.score||0)}">${p.score||'—'}</span></span></div>
+    <div class="pop-row"><span class="pop-k">Commodity</span><span class="pop-v" style="color:${colorFor(p.commodity)}">${escapeHtml(p.commodity||'—')}</span></div>
+    ${also}
+    <div class="pop-row"><span class="pop-k">Location</span><span class="pop-v">${escapeHtml([p.city,p.state,p.country].filter(Boolean).join(', ')||'—')}</span></div>
+    <div class="pop-row"><span class="pop-k">Shipments</span><span class="pop-v">${fmtNum(p.shipments)}</span></div>
+    <div class="pop-row"><span class="pop-k">Weight</span><span class="pop-v">${fmtNum(Math.round(p.weightMT))} MT</span></div>
+    <div class="pop-row"><span class="pop-k">TEU</span><span class="pop-v">${fmtNum(p.teu)}</span></div>
+    <div class="pop-row"><span class="pop-k">Notional</span><span class="pop-v">${fmtUSD(p.notionalUSD)}</span></div>
+    ${email}${phone}
+    <div class="pop-rev">${fmtUSD(p.revOppUSD)} est. annual rev opp</div>
+  </div>`;
+}
+
+document.getElementById('search').addEventListener('input', render);
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pillar — Outreach Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="../data/prospects.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:#0a1220;color:#e2e8f0;
+  display:flex;flex-direction:column}
+
+.toolbar{flex-shrink:0;padding:12px 20px;border-bottom:1px solid #162033;
+  background:#050a13;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.sub{font-size:10.5px;color:#64748b;line-height:1.5;max-width:560px}
+.sub b{color:#5ba0ff}
+.actions{margin-left:auto;display:flex;gap:8px}
+.btn{padding:6px 12px;border-radius:5px;background:rgba(42,127,255,0.12);
+  border:1px solid rgba(42,127,255,0.25);color:#5ba0ff;font-size:10.5px;
+  font-weight:600;cursor:pointer;font-family:inherit}
+.btn:hover{background:rgba(42,127,255,0.22)}
+.btn-ghost{background:transparent;border-color:#1e2d40;color:#94a3b8}
+
+.board{flex:1;overflow:auto;padding:16px;display:grid;gap:12px;
+  grid-template-columns:repeat(5, minmax(240px, 1fr));align-items:start}
+
+.col{background:#050a13;border:1px solid #162033;border-radius:8px;
+  display:flex;flex-direction:column;overflow:hidden;min-height:200px}
+.col-head{padding:11px 14px;border-bottom:1px solid #162033;
+  display:flex;align-items:center;gap:8px}
+.col-title{font-size:11px;font-weight:700;letter-spacing:0.5px;
+  text-transform:uppercase;color:#e2e8f0}
+.col-count{font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:3px;
+  background:rgba(255,255,255,0.04);color:#64748b;margin-left:auto}
+.col-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.col-sum{font-size:10px;color:#34d399;padding:6px 14px;border-bottom:1px solid #0e1828;
+  background:rgba(16,185,129,0.04);font-weight:600}
+
+.col-body{flex:1;padding:8px;overflow-y:auto;min-height:80px}
+.col-body::-webkit-scrollbar{width:4px}
+.col-body::-webkit-scrollbar-thumb{background:#1e2d40;border-radius:2px}
+
+.card{background:#0a1220;border:1px solid #162033;border-radius:6px;
+  padding:10px 11px;margin-bottom:6px;cursor:grab;user-select:none;
+  transition:border-color 0.12s}
+.card:active{cursor:grabbing}
+.card:hover{border-color:#2a7fff}
+.card.drag{opacity:0.4}
+.card-name{font-size:11.5px;font-weight:700;color:#e2e8f0;line-height:1.3;margin-bottom:4px}
+.card-meta{font-size:9.5px;color:#64748b;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.card-meta .dot{display:inline-block;width:6px;height:6px;border-radius:50%}
+.card-meta .rev{color:#34d399;font-weight:700;margin-left:auto}
+.card-persona{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+.persona-chip{font-size:8.5px;font-weight:700;letter-spacing:0.4px;
+  padding:1px 5px;border-radius:2px;text-transform:uppercase}
+.p-cfo{background:rgba(42,127,255,0.18);color:#5ba0ff}
+.p-coo{background:rgba(139,92,246,0.18);color:#a78bfa}
+.p-risk{background:rgba(232,160,32,0.18);color:#fbbf24}
+.p-proc{background:rgba(16,185,129,0.18);color:#34d399}
+
+.col-drop{outline:2px dashed #2a7fff;outline-offset:-4px}
+
+.legend{padding:8px 14px;font-size:9.5px;color:#64748b;border-top:1px solid #162033;background:#050a13}
+.legend span{display:inline-block;margin-right:14px}
+.legend b{color:#94a3b8}
+
+@media(max-width:1100px){.board{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:700px){.board{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="sub">
+    <b>Pipeline stages</b> follow Pillar GTM Playbook v4. Drag cards between columns to advance.
+    Primary buyer: <b>CFO</b>; co-signers: COO, Head of Risk/Trading, VP Procurement.
+    Seeded from top-scored prospects — state persists in browser.
+  </div>
+  <div class="actions">
+    <button class="btn" onclick="exportCSV()">Export CSV</button>
+    <button class="btn btn-ghost" onclick="resetBoard()">Reset</button>
+  </div>
+</div>
+
+<div class="board" id="board"></div>
+
+<div class="legend">
+  <span><b>Personas:</b></span>
+  <span><span class="persona-chip p-cfo">CFO</span> finance owner</span>
+  <span><span class="persona-chip p-coo">COO</span> ops owner</span>
+  <span><span class="persona-chip p-risk">RISK</span> trading / risk head</span>
+  <span><span class="persona-chip p-proc">PROC</span> VP procurement</span>
+</div>
+
+<script>
+const STAGES = [
+  {k:'identified', name:'Identified',   dot:'#64748b'},
+  {k:'contacted',  name:'Contacted',    dot:'#5ba0ff'},
+  {k:'meeting',    name:'Meeting Set',  dot:'#fbbf24'},
+  {k:'demo',       name:'Demo / Diligence', dot:'#a78bfa'},
+  {k:'closed',     name:'Pilot / Closed', dot:'#34d399'},
+];
+
+const COLORS = {'Aluminum':'#5ba0ff','Aluminum sheet':'#3b82f6','Copper':'#f97316','Lead':'#a855f7','Lead acid battery':'#9333ea','Lithium':'#10b981','Titanium':'#e8a020','Tin':'#fbbf24','Zinc':'#14b8a6','Magnesium':'#22d3ee','Molybdenum':'#ec4899','Steel coil':'#64748b','Steel scrap':'#94a3b8','Scrap':'#64748b','Scrap metal':'#64748b','HMS':'#475569','Iron':'#78716c'};
+function colorFor(c){return COLORS[c]||'#94a3b8'}
+function fmtUSD(n){if(!n)return'—';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K';return'$'+Math.round(n)}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+
+// Deterministic persona assignment per prospect (CFO always, plus 1-2 others)
+function personasFor(p){
+  const out = ['cfo'];
+  const h = [...p.name].reduce((a,c)=>a+c.charCodeAt(0),0);
+  if (p.category === 'Metals' || p.commodity.includes('Scrap')) out.push('risk');
+  if (h % 3 === 0) out.push('coo');
+  if (h % 4 === 0 && !out.includes('proc')) out.push('proc');
+  return out;
+}
+
+const STORAGE_KEY = 'pillar_outreach_stages_v1';
+let DATA = [];
+let stages = {};  // name -> stageKey
+
+(window.PILLAR_DATA ? Promise.resolve(window.PILLAR_DATA) : fetch('../data/prospects.json').then(r=>r.json())).then(p => {
+  // Seed with top 40 scored prospects
+  DATA = [...p.prospects].filter(x => x.tier === 'scored').sort((a,b)=>b.revOppUSD-a.revOppUSD).slice(0,40);
+  loadState();
+  render();
+});
+
+function loadState(){
+  try {
+    stages = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch(e) { stages = {}; }
+  DATA.forEach(p => { if (!stages[p.name]) stages[p.name] = 'identified'; });
+}
+function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(stages)); }
+
+function render(){
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  STAGES.forEach(s => {
+    const inStage = DATA.filter(p => stages[p.name] === s.k);
+    const sum = inStage.reduce((t,p)=>t+p.revOppUSD,0);
+    const col = document.createElement('div');
+    col.className = 'col';
+    col.dataset.stage = s.k;
+    col.innerHTML = `
+      <div class="col-head">
+        <div class="col-dot" style="background:${s.dot}"></div>
+        <div class="col-title">${s.name}</div>
+        <div class="col-count">${inStage.length}</div>
+      </div>
+      <div class="col-sum">${fmtUSD(sum)} potential</div>
+      <div class="col-body"></div>`;
+    const body = col.querySelector('.col-body');
+    inStage.forEach(p => body.appendChild(cardEl(p)));
+    col.addEventListener('dragover', e => { e.preventDefault(); col.classList.add('col-drop'); });
+    col.addEventListener('dragleave', () => col.classList.remove('col-drop'));
+    col.addEventListener('drop', e => {
+      e.preventDefault();
+      col.classList.remove('col-drop');
+      const name = e.dataTransfer.getData('text/plain');
+      if (name && stages[name] !== s.k) { stages[name] = s.k; saveState(); render(); }
+    });
+    board.appendChild(col);
+  });
+}
+
+function cardEl(p){
+  const c = document.createElement('div');
+  c.className = 'card';
+  c.draggable = true;
+  c.dataset.name = p.name;
+  const personas = personasFor(p);
+  const loc = [p.city, p.state].filter(Boolean).join(', ') || p.country || '—';
+  c.innerHTML = `
+    <div class="card-name">${esc(p.name)}</div>
+    <div class="card-meta">
+      <span class="dot" style="background:${colorFor(p.commodity)}"></span>
+      <span>${esc(p.commodity || '—')}</span>
+      <span>· ${esc(loc)}</span>
+      <span class="rev">${fmtUSD(p.revOppUSD)}</span>
+    </div>
+    <div class="card-persona">
+      ${personas.map(x => `<span class="persona-chip p-${x}">${x.toUpperCase()}</span>`).join('')}
+    </div>`;
+  c.addEventListener('dragstart', e => { e.dataTransfer.setData('text/plain', p.name); c.classList.add('drag'); });
+  c.addEventListener('dragend', () => c.classList.remove('drag'));
+  return c;
+}
+
+window.resetBoard = function(){
+  if (!confirm('Reset all cards to Identified?')) return;
+  DATA.forEach(p => stages[p.name] = 'identified');
+  saveState(); render();
+};
+
+window.exportCSV = function(){
+  const rows = [['Company','Stage','Commodity','Score','Location','Rev Opp USD','Personas']];
+  DATA.forEach(p => {
+    const loc = [p.city, p.state, p.country].filter(Boolean).join(' / ');
+    rows.push([p.name, stages[p.name], p.commodity, p.score, loc, p.revOppUSD, personasFor(p).join('|')]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pillar_outreach_pipeline.csv';
+  a.click();
+};
+</script>
+</body>
+</html>

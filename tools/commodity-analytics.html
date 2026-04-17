@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pillar — Commodity Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="../data/prospects.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;background:#0a1220;color:#e2e8f0;
+  padding:20px;overflow-y:auto}
+
+.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.kpi{background:#050a13;border:1px solid #162033;border-radius:8px;padding:14px 16px}
+.kpi-label{font-size:9.5px;font-weight:700;letter-spacing:1px;color:#3d5070;
+  text-transform:uppercase;margin-bottom:8px}
+.kpi-value{font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px}
+.kpi-sub{font-size:10.5px;color:#64748b;margin-top:3px}
+
+.panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.panel{background:#050a13;border:1px solid #162033;border-radius:8px;padding:16px 18px}
+.panel.full{grid-column:1 / -1}
+.panel-title{font-size:11.5px;font-weight:700;letter-spacing:0.4px;color:#e2e8f0;
+  margin-bottom:3px;text-transform:uppercase}
+.panel-sub{font-size:10.5px;color:#64748b;margin-bottom:14px;line-height:1.5}
+
+.bar-row{display:grid;grid-template-columns:130px 1fr 100px;gap:10px;align-items:center;
+  padding:5px 0;font-size:11px}
+.bar-row + .bar-row{border-top:1px solid #0e1828}
+.bar-label{color:#e2e8f0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:9px;background:#0e1828;border-radius:2px;overflow:hidden;position:relative}
+.bar-fill{height:100%;border-radius:2px;transition:width 0.3s}
+.bar-val{text-align:right;color:#94a3b8;font-size:10.5px;font-variant-numeric:tabular-nums}
+.bar-val b{color:#e2e8f0;font-weight:700}
+
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;font-size:10px;color:#64748b}
+.legend-item{display:flex;align-items:center;gap:4px}
+.legend-dot{width:8px;height:8px;border-radius:50%}
+
+.score-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-top:10px}
+.score-box{background:#0a1220;border:1px solid #162033;border-radius:6px;padding:10px 8px;text-align:center}
+.score-box-v{font-size:18px;font-weight:800;color:#fff}
+.score-box-l{font-size:9px;color:#64748b;margin-top:3px;letter-spacing:0.5px;text-transform:uppercase}
+.score-box-n{font-size:9px;color:#34d399;margin-top:2px}
+
+.assumption{margin-top:16px;padding:12px 14px;background:rgba(42,127,255,0.05);
+  border:1px solid rgba(42,127,255,0.18);border-radius:6px;font-size:10.5px;
+  color:#94a3b8;line-height:1.6}
+.assumption b{color:#5ba0ff}
+
+.treemap{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.tm-cell{border-radius:4px;padding:10px;min-height:60px;display:flex;
+  flex-direction:column;justify-content:space-between;font-size:10px;color:#fff;
+  cursor:default;transition:transform 0.1s}
+.tm-cell:hover{transform:scale(1.02)}
+.tm-name{font-weight:700;font-size:11px}
+.tm-val{font-weight:600;opacity:0.85;font-size:10.5px}
+
+@media(max-width:900px){
+  .grid{grid-template-columns:repeat(2,1fr)}
+  .panels{grid-template-columns:1fr}
+  .bar-row{grid-template-columns:110px 1fr 90px}
+  .score-grid{grid-template-columns:repeat(4,1fr)}
+}
+</style>
+</head>
+<body>
+
+<div class="grid">
+  <div class="kpi"><div class="kpi-label">Prospects</div><div class="kpi-value" id="k-prospects">—</div><div class="kpi-sub">US import manifests</div></div>
+  <div class="kpi"><div class="kpi-label">Total Shipments</div><div class="kpi-value" id="k-shipments">—</div><div class="kpi-sub">trailing period</div></div>
+  <div class="kpi"><div class="kpi-label">Est. Notional</div><div class="kpi-value" id="k-notional">—</div><div class="kpi-sub">weight × spot price</div></div>
+  <div class="kpi"><div class="kpi-label">Est. Revenue Opp</div><div class="kpi-value" style="color:#34d399" id="k-rev">—</div><div class="kpi-sub">50 bps illustrative</div></div>
+</div>
+
+<div class="panels">
+  <div class="panel">
+    <div class="panel-title">Revenue opportunity by commodity</div>
+    <div class="panel-sub">Illustrative annual fee on hedged notional (50 bps × weight × spot).</div>
+    <div id="rev-bars"></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Shipment volume by commodity</div>
+    <div class="panel-sub">Total shipments across all prospects in that category.</div>
+    <div id="ship-bars"></div>
+  </div>
+
+  <div class="panel full">
+    <div class="panel-title">Score distribution</div>
+    <div class="panel-sub">Pillar priority score per GTM Playbook v4 scoring model.</div>
+    <div class="score-grid" id="score-grid"></div>
+  </div>
+
+  <div class="panel full">
+    <div class="panel-title">Notional exposure treemap</div>
+    <div class="panel-sub">Cell area ∝ commodity notional exposure in the prospect universe.</div>
+    <div class="treemap" id="treemap"></div>
+  </div>
+
+  <div class="panel full">
+    <div class="panel-title">Top 15 prospects by revenue opportunity</div>
+    <div class="panel-sub">Largest individual hedging opportunities across the prospect base.</div>
+    <div id="top-bars"></div>
+  </div>
+</div>
+
+<div class="assumption">
+  <b>Methodology.</b> Revenue opportunity = <code>weight (MT) × commodity spot (USD/MT) × 50&nbsp;bps</code>,
+  a standalone agency-execution fee assumption. Spot prices (Apr 2026, USD/MT): Al 2,500 · Cu 12,630 · Pb 2,000 · Li 15,000 · Ti 10,000 · Sn 35,000 · Zn 2,800 · Mg 2,500 · Mo 55,000 · Steel scrap 350 · Steel coil 800.
+  Not a contractual quote — intended as a relative sizing heuristic.
+</div>
+
+<script>
+const COLORS = {
+  'Aluminum':'#5ba0ff','Aluminum sheet':'#3b82f6','Copper':'#f97316',
+  'Lead':'#a855f7','Lead acid battery':'#9333ea','Lithium':'#10b981',
+  'Titanium':'#e8a020','Tin':'#fbbf24','Zinc':'#14b8a6',
+  'Magnesium':'#22d3ee','Molybdenum':'#ec4899','Steel coil':'#64748b',
+  'Steel scrap':'#94a3b8','Scrap':'#64748b','Scrap metal':'#64748b',
+  'HMS':'#475569','Iron':'#78716c',
+};
+const SCORE_COLORS = {100:'#f87171',95:'#fb923c',90:'#fbbf24',85:'#34d399',80:'#5ba0ff',75:'#a78bfa',70:'#94a3b8',0:'#475569'};
+function colorFor(c){return COLORS[c]||'#94a3b8'}
+function fmtUSD(n){if(!n)return'$0';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K';return'$'+Math.round(n)}
+function fmtNum(n){return (n||0).toLocaleString()}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')}
+
+(window.PILLAR_DATA ? Promise.resolve(window.PILLAR_DATA) : fetch('../data/prospects.json').then(r=>r.json())).then(render);
+
+function render(payload){
+  const P = payload.prospects;
+  const T = payload.totals;
+
+  document.getElementById('k-prospects').textContent = fmtNum(T.prospects);
+  document.getElementById('k-shipments').textContent = fmtNum(T.totalShipments);
+  document.getElementById('k-notional').textContent = fmtUSD(T.totalNotionalUSD);
+  document.getElementById('k-rev').textContent = fmtUSD(T.totalRevOppUSD);
+
+  // Group by commodity
+  const byComm = {};
+  P.forEach(p => {
+    const c = p.commodity || 'Unknown';
+    if (!byComm[c]) byComm[c] = {rev:0, ship:0, notional:0, weight:0, n:0};
+    byComm[c].rev += p.revOppUSD;
+    byComm[c].ship += p.shipments;
+    byComm[c].notional += p.notionalUSD;
+    byComm[c].weight += p.weightMT;
+    byComm[c].n += 1;
+  });
+
+  renderBars('rev-bars', byComm, 'rev', fmtUSD);
+  renderBars('ship-bars', byComm, 'ship', fmtNum);
+
+  // Score grid
+  const scoreCounts = {};
+  const scoreRev = {};
+  P.forEach(p => { const s = p.score||0; scoreCounts[s]=(scoreCounts[s]||0)+1; scoreRev[s]=(scoreRev[s]||0)+p.revOppUSD; });
+  const sg = document.getElementById('score-grid');
+  [100,95,90,85,80,75,70,0].forEach(v => {
+    if (!scoreCounts[v]) return;
+    const box = document.createElement('div');
+    box.className = 'score-box';
+    box.style.borderColor = SCORE_COLORS[v] + '40';
+    box.innerHTML = `
+      <div class="score-box-v" style="color:${SCORE_COLORS[v]}">${v===0?'—':v}</div>
+      <div class="score-box-l">${v===0?'Unscored':'Score '+v}</div>
+      <div>${fmtNum(scoreCounts[v])} <span style="color:#3d5070">·</span> ${fmtUSD(scoreRev[v])}</div>`;
+    sg.appendChild(box);
+  });
+
+  // Treemap — notional by commodity
+  const tm = document.getElementById('treemap');
+  const totalNot = Object.values(byComm).reduce((s,x)=>s+x.notional,0) || 1;
+  Object.entries(byComm).sort((a,b)=>b[1].notional-a[1].notional).forEach(([c,v]) => {
+    const share = v.notional / totalNot;
+    if (share < 0.001) return;
+    const cell = document.createElement('div');
+    cell.className = 'tm-cell';
+    cell.style.background = colorFor(c);
+    cell.style.flexBasis = (Math.max(12, share*100*4)) + '%';
+    cell.style.flexGrow = share * 10;
+    cell.innerHTML = `<div class="tm-name">${esc(c)}</div>
+      <div class="tm-val">${fmtUSD(v.notional)} · ${(share*100).toFixed(1)}%</div>`;
+    tm.appendChild(cell);
+  });
+
+  // Top 15 prospects
+  const tb = document.getElementById('top-bars');
+  const top = [...P].sort((a,b)=>b.revOppUSD-a.revOppUSD).slice(0,15);
+  const maxRev = top[0]?.revOppUSD || 1;
+  top.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-label" title="${esc(p.name)}">${esc(p.name)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(p.revOppUSD/maxRev*100).toFixed(1)}%;background:${colorFor(p.commodity)}"></div></div>
+      <div class="bar-val"><b>${fmtUSD(p.revOppUSD)}</b></div>`;
+    tb.appendChild(row);
+  });
+}
+
+function renderBars(elId, byComm, key, fmt){
+  const el = document.getElementById(elId);
+  const entries = Object.entries(byComm).sort((a,b)=>b[1][key]-a[1][key]);
+  const max = entries[0]?.[1][key] || 1;
+  entries.forEach(([c,v]) => {
+    if (v[key] <= 0) return;
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <div class="bar-label" title="${esc(c)} (${v.n})"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${colorFor(c)};margin-right:5px;vertical-align:middle"></span>${esc(c)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(v[key]/max*100).toFixed(1)}%;background:${colorFor(c)}"></div></div>
+      <div class="bar-val"><b>${fmt(v[key])}</b></div>`;
+    el.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>

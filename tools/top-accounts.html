@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pillar — Top Accounts</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="../data/prospects.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:#0a1220;color:#e2e8f0;
+  display:flex;flex-direction:column}
+
+.toolbar{flex-shrink:0;padding:14px 20px;border-bottom:1px solid #162033;
+  background:#050a13;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.toolbar-label{font-size:9.5px;font-weight:700;letter-spacing:1px;color:#3d5070;
+  text-transform:uppercase}
+#search{padding:7px 11px;background:#0a1220;border:1px solid #1e2d40;
+  border-radius:5px;color:#e2e8f0;font-size:12px;font-family:inherit;min-width:240px}
+#search:focus{outline:none;border-color:#2a7fff}
+
+.chip{padding:4px 9px;border-radius:12px;font-size:10.5px;font-weight:600;
+  cursor:pointer;border:1px solid #1e2d40;background:rgba(255,255,255,0.03);
+  color:#94a3b8;user-select:none;transition:all 0.12s}
+.chip:hover{color:#e2e8f0}
+.chip.on{background:rgba(42,127,255,0.18);border-color:#2a7fff;color:#e2e8f0}
+
+.meta{margin-left:auto;font-size:10.5px;color:#94a3b8}
+.meta b{color:#5ba0ff;font-weight:700}
+
+.table-wrap{flex:1;overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:11.5px}
+thead{position:sticky;top:0;background:#050a13;z-index:5}
+th{padding:10px 12px;text-align:left;font-size:9.5px;font-weight:700;
+  letter-spacing:0.8px;text-transform:uppercase;color:#64748b;
+  border-bottom:1px solid #162033;cursor:pointer;user-select:none;white-space:nowrap}
+th:hover{color:#e2e8f0}
+th.sorted{color:#5ba0ff}
+th .arr{margin-left:3px;opacity:0.6}
+td{padding:10px 12px;border-bottom:1px solid #0e1828;vertical-align:middle}
+tr:hover td{background:rgba(42,127,255,0.04)}
+td.n{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+td.name{font-weight:600;color:#e2e8f0;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td.rev{color:#34d399;font-weight:700}
+td.score{text-align:center}
+
+.score-pill{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9.5px;
+  font-weight:800;letter-spacing:0.3px}
+.s-100{background:rgba(239,68,68,0.18);color:#f87171}
+.s-95{background:rgba(249,115,22,0.18);color:#fb923c}
+.s-90{background:rgba(232,160,32,0.18);color:#fbbf24}
+.s-85{background:rgba(16,185,129,0.18);color:#34d399}
+.s-80{background:rgba(42,127,255,0.18);color:#5ba0ff}
+.s-lo{background:rgba(100,116,139,0.18);color:#94a3b8}
+
+.comm-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
+.loc{color:#94a3b8;font-size:10.5px}
+
+.table-wrap::-webkit-scrollbar{width:8px;height:8px}
+.table-wrap::-webkit-scrollbar-thumb{background:#1e2d40;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="toolbar-label">Filter</span>
+  <input id="search" type="search" placeholder="Search name, commodity, city, state…" autocomplete="off">
+  <div id="tier-chips" style="display:flex;gap:6px"></div>
+  <div class="meta" id="meta">Loading…</div>
+</div>
+
+<div class="table-wrap">
+  <table id="t">
+    <thead>
+      <tr>
+        <th data-k="score">Score</th>
+        <th data-k="name">Company</th>
+        <th data-k="commodity">Commodity</th>
+        <th data-k="loc">Location</th>
+        <th data-k="shipments" class="n">Shipments</th>
+        <th data-k="weightMT" class="n">Weight (MT)</th>
+        <th data-k="teu" class="n">TEU</th>
+        <th data-k="notionalUSD" class="n">Notional</th>
+        <th data-k="revOppUSD" class="n sorted">Rev Opp <span class="arr">↓</span></th>
+      </tr>
+    </thead>
+    <tbody id="tb"></tbody>
+  </table>
+</div>
+
+<script>
+const COLORS={'Aluminum':'#5ba0ff','Aluminum sheet':'#3b82f6','Copper':'#f97316','Lead':'#a855f7','Lead acid battery':'#9333ea','Lithium':'#10b981','Titanium':'#e8a020','Tin':'#fbbf24','Zinc':'#14b8a6','Magnesium':'#22d3ee','Molybdenum':'#ec4899','Steel coil':'#64748b','Steel scrap':'#94a3b8','Scrap':'#64748b','Scrap metal':'#64748b','HMS':'#475569','Iron':'#78716c'};
+function colorFor(c){return COLORS[c]||'#94a3b8'}
+function fmtUSD(n){if(!n)return'—';if(n>=1e9)return'$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return'$'+(n/1e6).toFixed(1)+'M';if(n>=1e3)return'$'+(n/1e3).toFixed(0)+'K';return'$'+Math.round(n)}
+function fmtNum(n){return n?(n).toLocaleString():'—'}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function scoreCls(s){if(s>=100)return's-100';if(s>=95)return's-95';if(s>=90)return's-90';if(s>=85)return's-85';if(s>=80)return's-80';return's-lo'}
+
+let DATA=[], sortKey='revOppUSD', sortDir=-1, tierFilter='all';
+
+(window.PILLAR_DATA ? Promise.resolve(window.PILLAR_DATA) : fetch('../data/prospects.json').then(r=>r.json())).then(p => { DATA=p.prospects; buildTiers(); render(); });
+
+function buildTiers(){
+  const el = document.getElementById('tier-chips');
+  [['all','All'],['scored','Scored only'],['raw','Unscored']].forEach(([k,l]) => {
+    const c = document.createElement('div');
+    c.className = 'chip' + (k===tierFilter?' on':'');
+    c.textContent = l;
+    c.onclick = () => { tierFilter=k; el.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on', x===c)); render(); };
+    el.appendChild(c);
+  });
+}
+
+function filtered(){
+  const q = document.getElementById('search').value.trim().toLowerCase();
+  return DATA.filter(p => {
+    if (tierFilter !== 'all' && p.tier !== tierFilter) return false;
+    if (!q) return true;
+    return (p.name + ' ' + (p.commodity||'') + ' ' + (p.city||'') + ' ' + (p.state||'') + ' ' + (p.country||'')).toLowerCase().includes(q);
+  });
+}
+
+function render(){
+  const rows = filtered().sort((a,b) => {
+    let av = a[sortKey], bv = b[sortKey];
+    if (sortKey === 'loc') { av = a.city || a.state || a.country || ''; bv = b.city || b.state || b.country || ''; }
+    if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
+    return ((av||0) - (bv||0)) * sortDir;
+  });
+  const tb = document.getElementById('tb');
+  tb.innerHTML = '';
+  rows.slice(0, 500).forEach(p => {
+    const tr = document.createElement('tr');
+    const score = p.score || 0;
+    const loc = [p.city, p.state, p.country].filter(Boolean).filter(x => x !== 'US' || !p.state).join(', ') || '—';
+    tr.innerHTML = `
+      <td class="score"><span class="score-pill ${scoreCls(score)}">${score || '—'}</span></td>
+      <td class="name" title="${esc(p.name)}">${esc(p.name)}</td>
+      <td><span class="comm-dot" style="background:${colorFor(p.commodity)}"></span>${esc(p.commodity||'—')}</td>
+      <td class="loc">${esc(loc)}</td>
+      <td class="n">${fmtNum(p.shipments)}</td>
+      <td class="n">${fmtNum(Math.round(p.weightMT))}</td>
+      <td class="n">${fmtNum(p.teu)}</td>
+      <td class="n">${fmtUSD(p.notionalUSD)}</td>
+      <td class="n rev">${fmtUSD(p.revOppUSD)}</td>`;
+    tb.appendChild(tr);
+  });
+
+  const totalRev = rows.reduce((s,p)=>s+p.revOppUSD,0);
+  document.getElementById('meta').innerHTML = `<b>${rows.length}</b> of ${DATA.length} · <b>${fmtUSD(totalRev)}</b> rev opp · showing top 500`;
+}
+
+document.querySelectorAll('th[data-k]').forEach(th => {
+  th.onclick = () => {
+    const k = th.dataset.k;
+    if (k === sortKey) sortDir = -sortDir; else { sortKey = k; sortDir = (k==='name'||k==='commodity'||k==='loc') ? 1 : -1; }
+    document.querySelectorAll('th').forEach(t => {
+      t.classList.toggle('sorted', t.dataset.k === k);
+      const arr = t.querySelector('.arr');
+      if (arr) arr.remove();
+      if (t.dataset.k === k) t.insertAdjacentHTML('beforeend', ` <span class="arr">${sortDir<0?'↓':'↑'}</span>`);
+    });
+    render();
+  };
+});
+document.getElementById('search').addEventListener('input', render);
+</script>
+</body>
+</html>
