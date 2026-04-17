@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pillar — Commodity Risk Intelligence Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:#0a1220;color:#e2e8f0;display:flex;flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ── Top bar (mobile) ── */
+#topbar{display:none;flex-shrink:0;height:48px;background:#050a13;
+  border-bottom:1px solid #162033;align-items:center;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;}
+#topbar::-webkit-scrollbar{display:none}
+.topbar-tab{flex-shrink:0;display:flex;align-items:center;gap:6px;
+  padding:0 16px;height:48px;cursor:pointer;font-size:12px;font-weight:500;
+  color:#64748b;border-bottom:2px solid transparent;white-space:nowrap;
+  transition:color 0.12s,border-color 0.12s;}
+.topbar-tab.active{color:#e2e8f0;border-bottom-color:#2a7fff}
+.topbar-tab:hover{color:#94a3b8}
+.tab-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+/* ── App shell ── */
+#app{display:flex;flex:1;overflow:hidden}
+
+/* ── Sidebar ── */
+#sidebar{width:230px;flex-shrink:0;background:#050a13;
+  border-right:1px solid #162033;display:flex;flex-direction:column;
+  height:100%;overflow:hidden;transition:transform 0.2s;}
+.sidebar-logo{padding:18px 14px 16px;border-bottom:1px solid #162033;flex-shrink:0;}
+.logo-mark{
+  display:flex;align-items:center;gap:11px;justify-content:flex-start;
+}
+.logo-icon{
+  flex-shrink:0;height:44px;width:auto;max-width:52px;object-fit:contain;
+  object-position:left center;display:block;
+}
+.logo-copy{display:flex;flex-direction:column;justify-content:center;gap:5px;min-width:0;flex:1;}
+.logo-title{
+  font-size:15px;font-weight:800;color:#fff;letter-spacing:-0.03em;line-height:1.05;
+}
+.logo-oi{
+  display:inline-flex;flex-direction:column;gap:2px;
+  padding:5px 7px 6px;border-radius:4px;
+  background:rgba(42,127,255,0.2);
+  border:1px solid rgba(42,127,255,0.22);
+  align-self:flex-start;
+}
+.logo-oi span{
+  font-size:7.5px;font-weight:700;letter-spacing:0.14em;
+  color:#8b9cb3;line-height:1.15;text-transform:uppercase;
+}
+
+.sidebar-nav{flex:1;overflow-y:auto;padding:10px 0 16px}
+.sidebar-nav::-webkit-scrollbar{width:0}
+.nav-section-label{font-size:9px;font-weight:700;letter-spacing:1.2px;
+  text-transform:uppercase;color:#3d5070;padding:14px 18px 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 18px;
+  cursor:pointer;font-size:12.5px;font-weight:500;color:#64748b;
+  border-left:2px solid transparent;transition:all 0.12s;user-select:none;}
+.nav-item:hover{color:#94a3b8;background:rgba(255,255,255,0.025)}
+.nav-item.active{color:#e2e8f0;background:rgba(42,127,255,0.08);
+  border-left-color:#2a7fff;font-weight:600;}
+.nav-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;
+  opacity:0.7;transition:opacity 0.12s;}
+.nav-item.active .nav-dot{opacity:1}
+.nav-tag{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:0.3px;
+  padding:1px 6px;border-radius:3px;text-transform:uppercase;}
+
+.sidebar-footer{padding:14px 18px;border-top:1px solid #162033;flex-shrink:0;}
+.sidebar-footer-text{font-size:10px;color:#3d5070;line-height:1.6}
+
+/* ── Main content ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.tool-pane{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.tool-pane.active{display:flex}
+
+/* ── Tool header ── */
+.tool-header{flex-shrink:0;height:46px;
+  background:linear-gradient(90deg,#050a13 0%,#0a1220 100%);
+  border-bottom:1px solid #162033;display:flex;align-items:center;
+  padding:0 18px;gap:14px;}
+.th-company{font-size:10px;font-weight:700;letter-spacing:1px;
+  text-transform:uppercase;padding:2px 8px;border-radius:3px;flex-shrink:0;}
+.th-title{font-size:12.5px;font-weight:600;color:#94a3b8;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.th-kpi{flex-shrink:0;font-size:11px;font-weight:700;padding:3px 10px;
+  border-radius:4px;background:rgba(255,255,255,0.04);border:1px solid #1e2d40;
+  color:#e2e8f0;display:flex;align-items:center;gap:5px;}
+.th-kpi-label{font-size:9px;font-weight:500;color:#64748b;margin-left:3px}
+.th-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.th-btn{display:flex;align-items:center;gap:4px;padding:4px 10px;
+  border-radius:4px;background:rgba(42,127,255,0.1);
+  border:1px solid rgba(42,127,255,0.25);color:#5ba0ff;font-size:10px;
+  font-weight:600;cursor:pointer;text-decoration:none;
+  transition:background 0.12s;white-space:nowrap;}
+.th-btn:hover{background:rgba(42,127,255,0.2)}
+
+/* ── iframe wrapper ── */
+.iframe-wrap{flex:1;overflow:hidden;position:relative;background:#0a1220;}
+.iframe-wrap iframe{width:100%;height:100%;border:none;display:block;}
+
+.iframe-loader{position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;background:#0a1220;z-index:10;
+  pointer-events:none;transition:opacity 0.3s;}
+.iframe-loader.hidden{opacity:0;pointer-events:none}
+.loader-spinner{width:36px;height:36px;border:3px solid #162033;
+  border-top-color:#2a7fff;border-radius:50%;
+  animation:spin 0.8s linear infinite;margin-bottom:12px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader-text{font-size:11px;color:#3d5070;font-weight:500}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  body{overflow:auto}html,body{height:auto}
+  #topbar{display:flex}#sidebar{display:none}
+  #app{height:calc(100vh - 48px)}
+  .tool-header{height:40px;padding:0 12px;gap:8px}
+  .th-kpi{display:none}.th-title{font-size:11px}
+  .th-btn span{display:none}
+}
+
+/* ── Accents per tool ── */
+.acc-map  {background:rgba(42,127,255,0.12);color:#5ba0ff;border:1px solid rgba(42,127,255,0.25)}
+.acc-comm {background:rgba(16,185,129,0.12);color:#34d399;border:1px solid rgba(16,185,129,0.25)}
+.acc-acct {background:rgba(232,160,32,0.12);color:#fbbf24;border:1px solid rgba(232,160,32,0.25)}
+.acc-out  {background:rgba(139,92,246,0.12);color:#a78bfa;border:1px solid rgba(139,92,246,0.25)}
+
+.dot-map  {background:#2a7fff}
+.dot-comm {background:#10b981}
+.dot-acct {background:#e8a020}
+.dot-out  {background:#8b5cf6}
+</style>
+</head>
+<body>
+
+<nav id="topbar" role="navigation">
+  <div class="topbar-tab active" data-tool="map" onclick="switchTool('map',this)"><div class="tab-dot dot-map"></div>Prospect Map</div>
+  <div class="topbar-tab" data-tool="comm" onclick="switchTool('comm',this)"><div class="tab-dot dot-comm"></div>Commodity Analytics</div>
+  <div class="topbar-tab" data-tool="acct" onclick="switchTool('acct',this)"><div class="tab-dot dot-acct"></div>Top Accounts</div>
+  <div class="topbar-tab" data-tool="out" onclick="switchTool('out',this)"><div class="tab-dot dot-out"></div>Outreach Tracker</div>
+</nav>
+
+<div id="app">
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">
+        <img class="logo-icon" src="logo.png" width="52" height="44" alt="" />
+        <div class="logo-copy">
+          <div class="logo-title">Pillar</div>
+          <div class="logo-oi" aria-label="Operating Intelligence">
+            <span>OPERATING</span>
+            <span>INTELLIGENCE</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Intelligence Tools</div>
+      <div class="nav-item active" id="nav-map" onclick="switchTool('map',this)" role="button" tabindex="0">
+        <div class="nav-dot dot-map"></div>Prospect Map<span class="nav-tag acc-map">US</span>
+      </div>
+      <div class="nav-item" id="nav-comm" onclick="switchTool('comm',this)" role="button" tabindex="0">
+        <div class="nav-dot dot-comm"></div>Commodity Analytics<span class="nav-tag acc-comm">Breakdown</span>
+      </div>
+      <div class="nav-item" id="nav-acct" onclick="switchTool('acct',this)" role="button" tabindex="0">
+        <div class="nav-dot dot-acct"></div>Top Accounts<span class="nav-tag acc-acct">Table</span>
+      </div>
+      <div class="nav-item" id="nav-out" onclick="switchTool('out',this)" role="button" tabindex="0">
+        <div class="nav-dot dot-out"></div>Outreach Tracker<span class="nav-tag acc-out">CFO / COO</span>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-text">
+        Pillar GTM&nbsp;·&nbsp;April 2026<br>
+        456 prospects · $495.8M est. opp<br>
+        <span style="color:#1e2d40">Confidential — internal use</span>
+      </div>
+    </div>
+  </nav>
+
+  <div id="main">
+
+    <div class="tool-pane active" id="pane-map">
+      <div class="tool-header">
+        <span class="th-company acc-map">Prospect Map</span>
+        <span class="th-title">US commodity importers — hedging candidate universe</span>
+        <div class="th-kpi">456 <span class="th-kpi-label">prospects</span></div>
+        <div class="th-kpi">$495.8M <span class="th-kpi-label">annual rev opp · illustrative</span></div>
+        <div class="th-actions">
+          <a class="th-btn" href="tools/prospect-map.html" target="_blank" rel="noopener"><span>Full screen</span></a>
+        </div>
+      </div>
+      <div class="iframe-wrap" id="wrap-map">
+        <div class="iframe-loader" id="loader-map"><div class="loader-spinner"></div><div class="loader-text">Loading Prospect Map…</div></div>
+        <iframe id="frame-map" data-src="tools/prospect-map.html" title="Prospect Map" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <div class="tool-pane" id="pane-comm">
+      <div class="tool-header">
+        <span class="th-company acc-comm">Commodity Analytics</span>
+        <span class="th-title">Exposure breakdown by commodity · score · volume</span>
+        <div class="th-kpi">$99.2B <span class="th-kpi-label">notional · illustrative</span></div>
+        <div class="th-actions">
+          <a class="th-btn" href="tools/commodity-analytics.html" target="_blank" rel="noopener"><span>Full screen</span></a>
+        </div>
+      </div>
+      <div class="iframe-wrap" id="wrap-comm">
+        <div class="iframe-loader" id="loader-comm"><div class="loader-spinner"></div><div class="loader-text">Loading Commodity Analytics…</div></div>
+        <iframe id="frame-comm" data-src="tools/commodity-analytics.html" title="Commodity Analytics" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <div class="tool-pane" id="pane-acct">
+      <div class="tool-header">
+        <span class="th-company acc-acct">Top Accounts</span>
+        <span class="th-title">Sortable prospect list — score, shipments, TEU, rev opp</span>
+        <div class="th-kpi">147 <span class="th-kpi-label">scored accounts</span></div>
+        <div class="th-actions">
+          <a class="th-btn" href="tools/top-accounts.html" target="_blank" rel="noopener"><span>Full screen</span></a>
+        </div>
+      </div>
+      <div class="iframe-wrap" id="wrap-acct">
+        <div class="iframe-loader" id="loader-acct"><div class="loader-spinner"></div><div class="loader-text">Loading Top Accounts…</div></div>
+        <iframe id="frame-acct" data-src="tools/top-accounts.html" title="Top Accounts" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </div>
+
+    <div class="tool-pane" id="pane-out">
+      <div class="tool-header">
+        <span class="th-company acc-out">Outreach Tracker</span>
+        <span class="th-title">CFO / COO buying-committee pipeline</span>
+        <div class="th-kpi">5 <span class="th-kpi-label">stages</span></div>
+        <div class="th-actions">
+          <a class="th-btn" href="tools/outreach-tracker.html" target="_blank" rel="noopener"><span>Full screen</span></a>
+        </div>
+      </div>
+      <div class="iframe-wrap" id="wrap-out">
+        <div class="iframe-loader" id="loader-out"><div class="loader-spinner"></div><div class="loader-text">Loading Outreach Tracker…</div></div>
+        <iframe id="frame-out" data-src="tools/outreach-tracker.html" title="Outreach Tracker" allowfullscreen loading="lazy"></iframe>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var TOOLS = ['map','comm','acct','out'];
+  var loaded = {};
+  var current = 'map';
+
+  function loadFrame(id) {
+    if (loaded[id]) return;
+    loaded[id] = true;
+    var frame = document.getElementById('frame-' + id);
+    if (!frame) return;
+    var src = frame.getAttribute('data-src');
+    if (!src) return;
+    frame.src = src;
+    frame.addEventListener('load', function onLoad() {
+      var loader = document.getElementById('loader-' + id);
+      if (loader) loader.classList.add('hidden');
+      frame.removeEventListener('load', onLoad);
+    }, { once: true });
+  }
+
+  window.switchTool = function(id) {
+    if (id === current) return;
+    current = id;
+    TOOLS.forEach(function(tid) {
+      var pane = document.getElementById('pane-' + tid);
+      if (pane) pane.classList.toggle('active', tid === id);
+      var nav = document.getElementById('nav-' + tid);
+      if (nav) nav.classList.toggle('active', tid === id);
+    });
+    document.querySelectorAll('.topbar-tab').forEach(function(tab) {
+      tab.classList.toggle('active', tab.dataset.tool === id);
+    });
+    loadFrame(id);
+  };
+
+  document.querySelectorAll('.nav-item[tabindex]').forEach(function(el) {
+    el.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); el.click(); }
+    });
+  });
+
+  loadFrame('map');
+})();
+</script>
+</body>
+</html>
